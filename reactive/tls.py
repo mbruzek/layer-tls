@@ -42,7 +42,7 @@ def install():
 @when_not('easyrsa configured')
 def configure_easyrsa():
     ''' Transitional state, allowing other layer(s) to modify config before we
-        proceed generating the certificates and working with PKI. '''
+    proceed generating the certificates and working with PKI. '''
     charm_dir = hookenv.charm_dir()
     # Create an absolute path to the file which will not be impacted by cwd.
     openssl_file = os.path.join(charm_dir, 'easy-rsa/easyrsa3/openssl-1.0.cnf')
@@ -76,7 +76,7 @@ def check_ca_status(force=False):
                 decoded_cert = None
             hookenv.log('Leader is creating the certificate authority.')
             certificate_authority = create_certificate_authority(decoded_cert)
-            leader_set({'certificate_authority': certificate_authority})
+            # Install the CA on this system as a trusted CA.
             install_ca(certificate_authority)
             # The leader can create the server certificate based on CA.
             hookenv.log('Leader is creating the server certificate.')
@@ -88,18 +88,30 @@ def check_ca_status(force=False):
             create_client_certificate()
 
 
-@hook('leader-settings-changed')
-def leader_settings_changed():
-    '''When the leader settings changes the followers can get the certificate
-    and install the certificate on their own system.'''
-    # Get the current CA value from leader_get.
-    ca = leader_get('certificate_authority')
-    if ca:
-        hookenv.log('Installing the CA.')
-        install_ca(ca)
+# @hook('leader-settings-changed')
+# def leader_settings_changed():
+#     '''When the leader settings changes the followers can get the certificate
+#     and install the certificate on their own system.'''
+#     # Get the current CA value from leader_get.
+#     ca = leader_get('certificate_authority')
+#     if ca:
+#         hookenv.log('Installing the CA.')
+#         install_ca(ca)
 
 
-@when('create certificate signing request')
+@when('certificates.send.ca')
+def send_ca(tls):
+    '''Read the CA off disk and send it on the certificates relationship.'''
+    ca_file = os.path.join(hookenv.charm_dir(), 'easy-rsa/easyrsa3/pki/ca.crt')
+    if os.path.isfile(ca_file):
+        with open(ca_file, 'r') as stream:
+            certificate_authority = stream.read()
+        hookenv.log('Setting CA on the relationship object'.format())
+        tls.set_ca(certificate_authority)
+    else:
+        hookenv.log('The CA file does not yet exist: {0}'.format(ca_file))
+
+@when('certificates.create.csr')
 def create_csr(tls):
     '''Create a certificate signing request (CSR). Only the followers need to
     run this operation.'''
@@ -114,7 +126,7 @@ def create_csr(tls):
             req_file = 'pki/reqs/{0}.req'.format(path_name)
             # If the request already exists do not generate another one.
             if os.path.isfile(req_file):
-                remove_state('create certificate signing request')
+                remove_state('certificates.create.csr')
                 return
 
             # The Common Name is the public address of the system.
@@ -134,7 +146,7 @@ def create_csr(tls):
         hookenv.log('The leader does not need to create a CSR.')
 
 
-@when('sign certificate signing request')
+@when('certfiicates.sign.csr')
 def import_sign(tls):
     '''Import and sign the certificate signing request (CSR). Only the leader
     can sign the requests.'''
@@ -174,7 +186,7 @@ def import_sign(tls):
                 tls.set_cert(unit_name, certificate)
 
 
-@when('signed certificate available')
+@when('certificates.signed')
 @when_not('tls.server.certificate available')
 def copy_server_cert(tls):
     '''Copy the certificate from the relation to the key value store.'''
@@ -184,7 +196,7 @@ def copy_server_cert(tls):
         # The key name is also used to set the reactive state.
         set_cert('tls.server.certificate', cert)
         # Remove this state so this method does not run all the time.
-        remove_state('signed certificate available')
+        remove_state('certificate.signed')
 
 
 @when('easyrsa configured')

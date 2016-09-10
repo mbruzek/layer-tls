@@ -2,6 +2,11 @@ name: tls
 summary: This is a middle layer and should not be built into a charm.
 description: |
   This layer provides Transport Layer Security (TLS) to peer charms.
+
+provides:
+  certificates:
+    interface: tls
+
 peers:
-   certificates:
+   peer-certificates:
      interface: tls
