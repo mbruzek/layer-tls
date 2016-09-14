@@ -1,10 +1,10 @@
-includes: ['layer:basic', 'interface:tls']
+includes: ['layer:basic', 'layer:leadership', 'interface:tls']
 options:
   basic:
     packages:
-      - git
       - openssl
 repo: http://github.com/juju-solutions/layer-tls.git
 exclude:
   - tests/10-deploy.py
   - tests/tests.yaml
+  - unit_tests

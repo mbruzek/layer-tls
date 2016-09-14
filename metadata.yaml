@@ -1,12 +1,16 @@
 name: tls
-summary: This is a middle layer and should not be built into a charm.
+summary: This is a charm that acts as a Certificate Authority.
 description: |
-  This layer provides Transport Layer Security (TLS) to peer charms.
+  This charm provides Transport Layer Security (TLS) to related charms.
 
 provides:
-  certificates:
+  client:
     interface: tls
 
-peers:
-   peer-certificates:
-     interface: tls
+resources:
+  easyrsa:
+    type: file
+    filename: easyrsa.tar.gz
+    description: |
+      An archive of the easyrsa software to sign and create certificates
+      available on Github at https://github.com/OpenVPN/easy-rsa
