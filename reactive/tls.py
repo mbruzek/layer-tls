@@ -18,7 +18,7 @@ from charms.leadership import leader_get
 
 @when_not('tls.easyrsa.installed')
 def install():
-    '''Install the easy-rsa software that is required for this layer.'''
+    '''Install the easy-rsa software that is used by this layer.'''
     path = None
     # Try to get the resource from Juju.
     try:
@@ -132,31 +132,37 @@ def create_certificate_authority():
 @when('client.available', 'tls.certificate.authority.available')
 @when('leadership.is_leader')
 def send_ca(tls):
-    '''A certificates relationship has been established, read the CA off disk
-    and send it on the certificates relationship.'''
+    '''The client relationship has been established, read the CA and client 
+    certificate from leadership data to set them on the relationship object.'''
     certificate_authority = leader_get('certificate_authority')
     tls.set_ca(certificate_authority)
-
+    # The client cert and key should be same for all connections.
     client_cert = leader_get('client_certificate')
     client_key = leader_get('client_key')
+    # Set the client certificate and key on the relationship object.
     tls.set_client_cert(client_cert, client_key)
 
 
 @when('client.server.cert.requested')
 def create_server_cert(tls):
-    '''Create a server cert with the information from the relation object.'''
+    '''Create server certificates with the request information from the 
+    relation object.'''
+    # Get the map of unit names to requests.
     requests = tls.get_server_requests()
+    # Iterate over all items in the map.
     for unit_name, request in requests.items():
         cn = request.get('common_name')
         sans = request.get('sans')
         name = request.get('certificate_name')
+        # Create the server certificate based on the information in request.
         server_cert, server_key = create_server_certificate(cn, sans, name)
+        # Set the certificate and key for the unit on the relationship object.
         tls.set_server_cert(unit_name, server_cert, server_key)
 
 
 def create_server_certificate(cn, san_list, name='server'):
-    '''Create the server certificate and server key from a common name, list of
-    Subject Alt Names, and the certificate name.'''
+    '''Return a newly created server certificate and server key from a 
+    common name, list of Subject Alternate Names, and the certificate name.'''
     server_cert = None
     server_key = None
     # Create an absolute path so current directory does not affect the result.
@@ -174,17 +180,17 @@ def create_server_certificate(cn, san_list, name='server'):
             server = './easyrsa --batch --req-cn={0} --subject-alt-name={1} ' \
                      'build-server-full {2} nopass 2>&1'.format(cn, sans, name)
             check_call(split(server))
-        # Read the server certificate from the filesystem.
+        # Read the server certificate from the file system.
         with open(cert_file, 'r') as stream:
             server_cert = stream.read()
-        # Read the server key from the filesystem.
+        # Read the server key from the file system.
         with open(key_file, 'r') as stream:
             server_key = stream.read()
     return server_cert, server_key
 
 
 def create_client_certificate(name='client'):
-    '''Create the client certificate and client key.'''
+    '''Return a newly created client certificate and client key, by name.'''
     client_cert = None
     client_key = None
     # Create an absolute path so current directory does not affect the result.
@@ -199,9 +205,10 @@ def create_client_certificate(name='client'):
             # Create a client certificate and key.
             client = './easyrsa build-client-full {0} nopass 2>&1'.format(name)
             check_call(split(client))
-        # Read the client certificate from the filesystem.
+        # Read the client certificate from the file system.
         with open(cert_file, 'r') as stream:
             client_cert = stream.read()
+        # Read the client key from the file system.
         with open(key_file, 'r') as stream:
             client_key = stream.read()
     return client_cert, client_key
