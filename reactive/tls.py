@@ -19,6 +19,7 @@ from charmhelpers.core import unitdata
 from charmhelpers.core.hookenv import is_leader
 from charmhelpers.core.hookenv import leader_set
 from charmhelpers.core.hookenv import leader_get
+from charmhelpers.core.hookenv import resource_get
 
 
 @when_not('easyrsa installed')
