@@ -36,7 +36,7 @@ def install():
         untar = 'tar -xvzf {0} -C {1}'.format(path, charm_dir)
         check_call(split(untar))
     else:
-        hookenv.log('Resource easyrsa unavailble.')
+        hookenv.log('Resource easyrsa unavailable.')
         # TODO: Remove this git code completely after we trust resources.
         git = 'git clone https://github.com/OpenVPN/easy-rsa.git'
         hookenv.log(git)
